@@ -4,6 +4,7 @@ import uuid
 import chromadb
 import json
 from chromadb.config import Settings
+import speech_recognition as sr
 
 from config import INTRODUCTION_MESSAGE
 
@@ -11,7 +12,8 @@ from config import INTRODUCTION_MESSAGE
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
+# Initialize Chroma DB client
+chroma_client = chromadb.Client(Settings())
 
 def get_or_create_session_id() -> str:
     """Get the session ID from query params or create and store a new one."""
@@ -24,16 +26,10 @@ def get_or_create_session_id() -> str:
     st.session_state.session_id = session_id  # 👈 This line is required
     return session_id
 
-# Initialize Chroma DB client
-
-chroma_client = chromadb.Client(Settings())
-
-
 def ensure_collection_exists(collection_name: str) -> None:
     """Ensure that the collection exists in Chroma DB."""
     if collection_name not in [col.name for col in chroma_client.list_collections()]:
         chroma_client.create_collection(collection_name)
-
 
 def save_chat_message(session_id: str, message: dict) -> None:
     """Save a chat message to Chroma DB with the session ID."""
@@ -41,8 +37,6 @@ def save_chat_message(session_id: str, message: dict) -> None:
     ensure_collection_exists(collection_name)
     collection = chroma_client.get_collection(collection_name)
     collection.add(documents=[json.dumps(message)], metadatas={"session_id": session_id,"role": message["role"]}, ids=[str(uuid.uuid4())])
-
-
 
 def retrieve_chat_history(session_id):
     collection_name = "chat_history"
@@ -67,7 +61,6 @@ def retrieve_chat_history(session_id):
             messages.append({"role": meta["role"], "content": str(doc)})
     return messages
 
-
 def load_css(file_path: str) -> None:
     """Load and apply CSS styles."""
     try:
@@ -83,13 +76,32 @@ def display_chat_messages() -> None:
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             role_class = "user" if message["role"] == "user" else "assistant"
-            prefix = "👤  " if message["role"] == "user" else "🤖  "
+            prefix = "👤  " if message["role"] == "user" else "🤖  "
             st.markdown(
                 f'<div class="{role_class}-message">'
                 f'<div class="{role_class}-bubble"><strong>{prefix}</strong>{message["content"]}</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
+
+def handle_voice_input():
+    """Handles voice input from the user."""
+    if st.sidebar.button("Speak"):
+        r = sr.Recognizer()
+        with sr.Microphone() as source:
+            st.sidebar.info("Say something!")
+            try:
+                audio = r.listen(source, phrase_time_limit=5) # Adjust time limit as needed
+                voice_prompt = r.recognize_google(audio)
+                st.sidebar.success(f"You said: {voice_prompt}")
+                return voice_prompt
+            except sr.WaitTimeoutError:
+                st.sidebar.warning("No speech detected.")
+            except sr.UnknownValueError:
+                st.sidebar.error("Could not understand audio.")
+            except sr.RequestError as e:
+                st.sidebar.error(f"Could not request results from Google Speech Recognition service; {e}")
+    return None
 
 def handle_user_input(prompt: str, chat_manager, session_id) -> None:
     """Handle user input and generate assistant response."""
@@ -100,7 +112,7 @@ def handle_user_input(prompt: str, chat_manager, session_id) -> None:
     with st.chat_message("user"):
         st.markdown(
             f'<div class="user-message">'
-            f'<div class="user-bubble"><strong>👤  </strong>{prompt}</div>'
+            f'<div class="user-bubble"><strong>👤  </strong>{prompt}</div>'
             f'</div>',
             unsafe_allow_html=True
         )
@@ -148,8 +160,7 @@ def handle_user_input(prompt: str, chat_manager, session_id) -> None:
         st.session_state.messages.append({"role": "assistant", "content": no_data_response})
         save_chat_message(session_id, {"role": "assistant", "content": no_data_response})
 
-
-def initialize_ui(company_name: str) -> None:
+def initialize_ui(chat_manager) -> None:
     """Initialize the Streamlit UI."""
     from config import PAGE_TITLE, PAGE_ICON, CSS_FILE, DATA_FOLDER
 
@@ -179,3 +190,5 @@ def initialize_ui(company_name: str) -> None:
         else:
             pass
 
+    st.sidebar.title("Voice Input")
+    st.sidebar.markdown("Click the button below to speak.")
