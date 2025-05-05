@@ -16,4 +16,7 @@ PAGE_TITLE = "Company Help Desk"
 PAGE_ICON = "🏢"
 CSS_FILE = "style.css"
 CHROMA_PERSIST_DIR = "chroma_db"
+GMAIL_SENDER_EMAIL = os.environ.get("EMAIL_SENDER")
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_SENDER_EMAIL")
+
 
