@@ -6,8 +6,11 @@ import json
 from chromadb.config import Settings
 import speech_recognition as sr
 import google.generativeai as genai
-from config import INTRODUCTION_MESSAGE, GOOGLE_API_KEY, GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD,EMAIL_RECIPIENT
+from config import INTRODUCTION_MESSAGE, GOOGLE_API_KEY, PAGE_ICON,PAGE_TITLE,CSS_FILE, GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD,EMAIL_RECIPIENT,DATA_FOLDER
 from email_utils import send_support_email
+from document_processor import process_documents, create_text_chunks, create_vectorstore
+from llm_utils import create_conversational_chain
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -331,15 +334,14 @@ def handle_user_input(prompt: str, chat_manager, session_id) -> None:
 
 def initialize_ui(chat_manager) -> None:
     """Initialize the Streamlit UI."""
-    from config import PAGE_TITLE, PAGE_ICON, CSS_FILE, DATA_FOLDER
+    
     st.set_page_config(page_title=PAGE_TITLE, page_icon=PAGE_ICON)
     load_css(CSS_FILE)
     session_id = get_or_create_session_id()
     if "messages" not in st.session_state:
         st.session_state.messages = retrieve_chat_history(session_id)
     if "company_name" not in st.session_state:
-        from document_processor import process_documents, create_text_chunks, create_vectorstore
-        from llm_utils import create_conversational_chain
+        
         all_text, company_name = process_documents(DATA_FOLDER)
         st.session_state.company_name = company_name
         st.title(f"🏢 {company_name} Help Desk")

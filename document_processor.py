@@ -6,6 +6,7 @@ from langchain.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import streamlit as st
 import logging
+from llm_utils import extract_company_name  # Import here to avoid circular imports
 
 from config import GOOGLE_API_KEY, CHUNK_SIZE, CHUNK_OVERLAP, EMBEDDING_MODEL_NAME
 
@@ -36,7 +37,7 @@ def get_document_text(file_path: str) -> str:
 
 def process_documents(data_folder: str) -> tuple[str, str]:
     """Process all documents in the data folder and extract the company name."""
-    from llm_utils import extract_company_name  # Import here to avoid circular imports
+    
 
     all_text = ""
     company_names = set()
