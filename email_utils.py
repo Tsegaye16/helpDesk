@@ -1,20 +1,20 @@
 import smtplib
 import logging
 from email.mime.text import MIMEText
-from config import GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD
+from config import GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD,EMAIL_RECIPIENT
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def send_support_email(user_email: str, user_concern: str, recipient_email: str = "abewatsegaye16@gmail.com") -> dict:
+def send_support_email(user_email: str, user_concern: str, recipient_email: str = EMAIL_RECIPIENT) -> dict:
     """
     Sends an email to the support team with the user's concern.
 
     Args:
         user_email (str): The email address of the user.
         user_concern (str): The specific question or concern of the user.
-        recipient_email (str): The support team's email address (default: abewatsegaye16@gmail.com).
+        recipient_email (str): The support team's email address (default: EMAIL_RECIPIENT).
 
     Returns:
         dict: Status of the email sending operation.

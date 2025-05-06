@@ -1,7 +1,9 @@
 import os
-
+from dotenv import load_dotenv
 # Environment variables
-GOOGLE_API_KEY = os.environ.get("GEMINI_API_KEY")
+# Load environment variables from .env file
+load_dotenv()
+GOOGLE_API_KEY = os.environ["GEMINI_API_KEY"]
 
 # Model configurations
 GEMINI_MODEL_NAME = "gemini-2.0-flash"
@@ -16,7 +18,7 @@ PAGE_TITLE = "Company Help Desk"
 PAGE_ICON = "🏢"
 CSS_FILE = "style.css"
 CHROMA_PERSIST_DIR = "chroma_db"
-GMAIL_SENDER_EMAIL = os.environ.get("EMAIL_SENDER")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_SENDER_EMAIL")
-
+GMAIL_SENDER_EMAIL = os.environ["EMAIL_SENDER"]
+GMAIL_APP_PASSWORD = os.environ["EMAIL_PASSWORD"]
+EMAIL_RECIPIENT = os.environ["EMAIL_RECIPIENT"]
 

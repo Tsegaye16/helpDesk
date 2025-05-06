@@ -10,7 +10,7 @@ from config import GOOGLE_API_KEY, GEMINI_MODEL_NAME
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+print("Sample log: ", GOOGLE_API_KEY)
 def extract_company_name(text: str) -> str:
     """Extract the company name from the document text using an LLM."""
     llm = ChatGoogleGenerativeAI(
@@ -56,6 +56,7 @@ def create_conversational_chain(vectorstore, company_name: str) -> Conversationa
 
 # Operating Guidelines
 - Maintain a warm, professional, and friendly tone in all interactions.
+- Respond only in English, even if the user uses another language.
 - Analyze each user message for tone and satisfaction level to tailor responses.
 - For normal queries, provide clear, concise, and accurate information.
 - If the user expresses dissatisfaction (e.g., frustration, confusion, or negative tone):

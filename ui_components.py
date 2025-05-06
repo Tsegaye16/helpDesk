@@ -6,7 +6,7 @@ import json
 from chromadb.config import Settings
 import speech_recognition as sr
 import google.generativeai as genai
-from config import INTRODUCTION_MESSAGE, GOOGLE_API_KEY, GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD
+from config import INTRODUCTION_MESSAGE, GOOGLE_API_KEY, GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD,EMAIL_RECIPIENT
 from email_utils import send_support_email
 
 # Set up logging
@@ -111,9 +111,42 @@ def handle_voice_input():
     return None
 
 def detect_negative_tone(message: str) -> bool:
-    """Detect negative tone based on keywords."""
-    negative_keywords = ["not helpful", "frustrated", "confused", "bad", "terrible", "unhappy", "disappointed"]
-    return any(keyword in message.lower() for keyword in negative_keywords)
+    """Detect negative tone using Gemini LLM."""
+    try:
+        # Initialize the model
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",
+            system_instruction=(
+                "You are an expert in sentiment analysis. Analyze the sentiment of the provided message and determine if it has a negative tone. "
+                "A negative tone includes expressions of frustration, dissatisfaction, anger, confusion, or disappointment. "
+                "Return only 'True' if the tone is negative, or 'False' if it is neutral or positive."
+            )
+        )
+
+        # Create a prompt for sentiment analysis
+        prompt = (
+            f"Analyze the sentiment of the following message and return 'True' if the tone is negative, or 'False' if it is neutral or positive:\n\n"
+            f"Message: {message}\n\n"
+            "Sentiment (True/False):"
+        )
+
+        # Generate content
+        response = model.generate_content(prompt)
+        sentiment = response.text.strip()
+
+        logger.info(f"Sentiment analysis for message '{message}': {sentiment}")
+
+        # Validate response
+        if sentiment in ["True", "False"]:
+            return sentiment == "True"
+        else:
+            logger.error(f"Invalid sentiment response: {sentiment}")
+            return False  # Default to False if response is invalid
+
+    except Exception as e:
+        logger.error(f"Error detecting negative tone with LLM: {e}")
+        st.error(f"Error analyzing sentiment: {e}")
+        return False  # Default to False on error
 
 def handle_user_input(prompt: str, chat_manager, session_id) -> None:
     """Handle user input and generate assistant response."""
@@ -230,7 +263,7 @@ def handle_user_input(prompt: str, chat_manager, session_id) -> None:
                         result = send_support_email(
                             user_email=args.get("user_email", st.session_state.user_email),
                             user_concern=args.get("user_concern", user_concern),
-                            recipient_email=args.get("recipient_email", "abewatsegaye16@gmail.com")
+                            recipient_email=args.get("recipient_email", EMAIL_RECIPIENT)
                         )
                         response_text = result["message"]
                         break

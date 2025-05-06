@@ -20,6 +20,9 @@ def main():
     # Initialize chat history manager
     chat_manager = ChatHistoryManager()
     initialize_ui(chat_manager)
+    # Display title after initialization
+    if "company_name" in st.session_state:
+        st.title(f"🏢 {st.session_state.company_name} Help Desk")
     display_chat_messages()
     if voice_prompt := handle_voice_input():
         handle_user_input(voice_prompt, chat_manager, st.session_state.session_id)
