@@ -344,7 +344,7 @@ def initialize_ui(chat_manager) -> None:
         
         all_text, company_name = process_documents(DATA_FOLDER)
         st.session_state.company_name = company_name
-        st.title(f"🏢 {company_name} Help Desk")
+        # st.title(f"🏢 {company_name} Help Desk")
         if not st.session_state.messages:
             st.session_state.messages.append({"role": "assistant", "content": INTRODUCTION_MESSAGE})
         if all_text:
