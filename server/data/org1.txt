@@ -1,0 +1,97 @@
+
+
+# TechSolutions Inc. Employee Manual
+
+## Table of Contents
+1. Company Overview
+2. Our Mission and Vision
+3. Services
+4. Company Policies
+5. Frequently Asked Questions (FAQs)
+6. Contact Information
+
+---
+
+## 1. Company Overview
+
+TechSolutions Inc. is a leading provider of innovative technology solutions. Founded in 2010, we have grown to become a trusted partner for businesses seeking to leverage technology for growth and efficiency. Our team of experienced professionals is dedicated to delivering high-quality services and solutions tailored to meet the unique needs of our clients.
+
+---
+
+## 2. Our Mission and Vision
+
+### Mission
+Our mission is to empower businesses with cutting-edge technology solutions that drive innovation, improve efficiency, and foster growth.
+
+### Vision
+Our vision is to be the go-to technology partner for businesses worldwide, known for our excellence, innovation, and customer-centric approach.
+
+---
+
+## 3. Services
+
+### Software Development
+We offer custom software development services to help businesses automate processes, enhance productivity, and gain a competitive edge. Our expertise includes web and mobile application development, enterprise software solutions, and more.
+
+### IT Consulting
+Our IT consulting services help businesses make informed technology decisions. We provide strategic guidance, technology assessments, and roadmaps to align IT initiatives with business goals.
+
+### Cloud Services
+We offer a range of cloud services, including cloud migration, management, and optimization. Our cloud solutions help businesses reduce costs, improve scalability, and enhance security.
+
+### Cybersecurity
+Our cybersecurity services protect businesses from threats and vulnerabilities. We offer security assessments, penetration testing, and managed security services to safeguard your data and systems.
+
+---
+
+## 4. Company Policies
+
+### Work Hours
+Our standard work hours are from 9:00 AM to 5:00 PM, Monday to Friday. Employees are expected to adhere to these hours unless otherwise approved by their manager.
+
+### Leave Policy
+Employees are entitled to paid leave, including vacation, sick leave, and personal days. Leave requests should be submitted in advance and approved by the manager.
+
+### Dress Code
+Employees are expected to dress professionally and appropriately for their role. Business casual attire is acceptable unless otherwise specified for client meetings or special events.
+
+### Code of Conduct
+All employees are expected to adhere to our code of conduct, which includes respect for colleagues, integrity, and professionalism. Any violations may result in disciplinary action.
+
+---
+
+## 5. Frequently Asked Questions (FAQs)
+
+### Q: How do I request time off?
+A: To request time off, please submit a leave request through our HR portal at least two weeks in advance. Your manager will review and approve the request.
+
+### Q: What should I do if I encounter a technical issue?
+A: If you encounter a technical issue, please contact our IT support team at abewatsegaye16@gmail.com or call our helpdesk at (123) 456-7890.
+
+### Q: How do I access company resources remotely?
+A: To access company resources remotely, use our secure VPN. Instructions for setting up the VPN can be found on our intranet.
+
+### Q: What is the process for submitting expense reports?
+A: Expense reports should be submitted through our expense management system within 30 days of incurring the expense. Attach all relevant receipts and provide a brief description of each expense.
+
+---
+
+## 6. Contact Information
+
+### Headquarters
+TechSolutions Inc.
+123 Innovation Drive
+Addis Ababa, Ethiopia
+
+### Customer Support
+Phone: (251) 99 521 3296
+Email: abewatsegaye16@gmail.com
+
+### Sales Inquiries
+Phone: (251) 97 981 9839
+Email: sales@techsolutions.com
+
+### Human Resources
+Phone: (123) 456-7892
+Email: hr@techsolutions.com
+

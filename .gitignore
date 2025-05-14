@@ -2,4 +2,6 @@
 /data
 /server/__pycache__/
 /server/chroma_db/
-/server/data/
+#/server/data/
+# Local Netlify folder
+.netlify
