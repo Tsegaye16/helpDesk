@@ -8,3 +8,5 @@ langchain-google-genai
 speechrecognition
 google-generativeai
 python-docx
+google-genai
+langchain-community
