@@ -1,2 +1,5 @@
 .env
 /data
+/server/__pycache__/
+/server/chroma_db/
+/server/data/

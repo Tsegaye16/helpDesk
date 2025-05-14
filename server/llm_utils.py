@@ -4,13 +4,11 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 import streamlit as st
 import logging
-
 from config import GOOGLE_API_KEY, GEMINI_MODEL_NAME
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-print("Sample log: ", GOOGLE_API_KEY)
+
 def extract_company_name(text: str) -> str:
     """Extract the company name from the document text using an LLM."""
     llm = ChatGoogleGenerativeAI(
@@ -39,6 +37,36 @@ def extract_company_name(text: str) -> str:
         logger.error(f"Error extracting company name with LLM: {e}")
         st.error(f"Error extracting company name with LLM: {e}")
         return "our company"
+
+def extract_support_email(text: str) -> str:
+    """Extract the support team email from the document text using an LLM."""
+    llm = ChatGoogleGenerativeAI(
+        model=GEMINI_MODEL_NAME,
+        google_api_key=GOOGLE_API_KEY,
+        convert_system_message_to_human=True
+    )
+    
+    # Use full text to increase chances of finding email
+    prompt = (
+        "You are an expert at extracting information from text. Given the following text from a company document, "
+        "identify the email address associated with the support team or customer service. The email may appear in phrases "
+        "like 'contact support at', 'email us at', 'support@company.com', or in sections like 'Contact Us', 'Support', or 'Help'. "
+        "Return only the email address as a string. If no support email is found, return an empty string.\n\n"
+        f"Text: {text}\n\n"
+        "Support Email:"
+    )
+    
+    try:
+        response = llm.invoke(prompt)
+        email = response.content.strip()
+        # Basic email validation
+        if email and "@" in email and "." in email:
+            return email
+        return ""
+    except Exception as e:
+        logger.error(f"Error extracting support email with LLM: {e}")
+        st.error(f"Error extracting support email with LLM: {e}")
+        return ""
 
 def create_conversational_chain(vectorstore, company_name: str) -> ConversationalRetrievalChain:
     """Create a conversational retrieval chain for the chatbot."""
