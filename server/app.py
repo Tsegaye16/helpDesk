@@ -174,7 +174,7 @@ async def chat(request: ChatRequest):
             state["dissatisfaction_count"] = 0
 
             # Use extracted support email if available, else fall back to EMAIL_RECIPIENT
-            recipient = support_email if support_email else "abcd@gmail.com"
+            recipient = support_email
             result = send_support_email(state["user_email"], user_concern, recipient_email=recipient)
             response = result["message"]
             logger.info(f"Support email sent for session {session_id}: {response}")

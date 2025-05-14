@@ -1,9 +1,13 @@
 import axios from "axios";
+//
+const isLocal = window.location.hostname === "localhost";
 
 const API = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: isLocal
+    ? "http://localhost:8080"
+    : "https://helpdesk-0ovm.onrender.com",
 });
-
+console.log(process.env.REACT_APP_LOCAL_API_BASE_URL);
 export const getCompanyName = async () => {
   try {
     return await API.get(`/getCompanyName`);

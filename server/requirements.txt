@@ -7,4 +7,4 @@ langchain
 langchain-google-genai
 speechrecognition
 google-generativeai
-docx
+python-docx
