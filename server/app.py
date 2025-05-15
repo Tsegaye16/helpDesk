@@ -99,6 +99,7 @@ def detect_negative_tone(message: str) -> bool:
         ]
         return any(keyword in message.lower() for keyword in negative_keywords)
 
+
 @app.get("/getCompanyName")
 async def get_company_name():
     try:
@@ -174,8 +175,13 @@ async def chat(request: ChatRequest):
             state["dissatisfaction_count"] = 0
 
             # Use extracted support email if available, else fall back to EMAIL_RECIPIENT
-            recipient = support_email
-            result = send_support_email(state["user_email"], user_concern, recipient_email=recipient)
+            recipient = support_email if support_email else EMAIL_RECIPIENT
+            result = send_support_email(
+                state["user_email"],
+                user_concern,
+                recipient_email=recipient,
+                chat_history=state["messages"]  # Pass chat history
+            )
             response = result["message"]
             logger.info(f"Support email sent for session {session_id}: {response}")
             chat_manager.save_chat_message(session_id, "assistant", response)

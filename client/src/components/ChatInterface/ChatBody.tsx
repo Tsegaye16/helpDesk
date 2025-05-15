@@ -1,9 +1,10 @@
 import React, { useRef, useEffect } from "react";
+import "../../App.css";
 
-import "../../App.css"; // Adjust the path as necessary
 interface Message {
   sender: string;
   text: string;
+  isPending?: boolean; // Add this new property
 }
 
 interface ChatBodyProps {
@@ -11,6 +12,7 @@ interface ChatBodyProps {
   isLoading: boolean;
   error: string | null;
   welcomeMessage: string;
+  pendingUserMessage?: string; // Add this prop for immediate display
 }
 
 const ChatBody: React.FC<ChatBodyProps> = ({
@@ -18,6 +20,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({
   isLoading,
   error,
   welcomeMessage,
+  pendingUserMessage,
 }) => {
   const chatBodyRef = useRef<HTMLDivElement>(null);
 
@@ -25,7 +28,15 @@ const ChatBody: React.FC<ChatBodyProps> = ({
     if (chatBodyRef.current) {
       chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, pendingUserMessage]); // Add pendingUserMessage to dependencies
+
+  // Combine regular messages with pending message if it exists
+  const allMessages = [
+    ...messages,
+    ...(pendingUserMessage
+      ? [{ sender: "user", text: pendingUserMessage, isPending: true }]
+      : []),
+  ];
 
   return (
     <div className="chat-body" ref={chatBodyRef}>
@@ -36,18 +47,18 @@ const ChatBody: React.FC<ChatBodyProps> = ({
         </div>
       )}
       {error && <div className="message error">{error}</div>}
-      {messages.length === 0 && !isLoading && !error && (
+      {messages.length === 0 && !isLoading && !error && !pendingUserMessage && (
         <div className="message bot-message">
           <span className="bot-icon">🤖</span>
           <div className="bot-bubble">{welcomeMessage}</div>
         </div>
       )}
-      {messages.map((msg, index) => (
+      {allMessages.map((msg, index) => (
         <div
           key={index}
           className={`message ${
             msg.sender === "user" ? "user" : "bot"
-          }-message`}
+          }-message ${msg.isPending ? "pending" : ""}`}
         >
           {msg.sender === "user" ? (
             <>
@@ -62,7 +73,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({
           )}
         </div>
       ))}
-      {isLoading && messages.length > 0 && (
+      {isLoading && (messages.length > 0 || pendingUserMessage) && (
         <div className="message bot-message">
           <span className="bot-icon">🤖</span>
           <div className="bot-bubble">Thinking...</div>

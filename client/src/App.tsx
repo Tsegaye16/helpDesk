@@ -287,14 +287,18 @@ const App: React.FC = () => {
     }
   };
 
+  const [pendingUserMessage, setPendingUserMessage] = useState("");
+
   const handleSendMessage = () => {
     if (inputValue.trim()) {
       const userMessage = inputValue.trim();
+      setPendingUserMessage(userMessage); // Show immediately
       setInputValue("");
-      dispatch(chat({ message: userMessage, session_id: session_id }) as any);
-      if (isListening) {
-        toggleListening();
-      }
+      dispatch(chat({ message: userMessage, session_id: session_id }) as any)
+        .unwrap()
+        .finally(() => {
+          setPendingUserMessage(""); // Clear when done
+        });
     }
   };
 
@@ -346,6 +350,7 @@ const App: React.FC = () => {
           onKeyPress={handleKeyPress}
           onSendMessage={handleSendMessage}
           onToggleVoiceRecognition={toggleListening}
+          pendingUserMessage={pendingUserMessage}
         />
       )}
     </div>

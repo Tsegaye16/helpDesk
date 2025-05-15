@@ -28,6 +28,7 @@ interface ChatInterfaceProps {
   onKeyPress: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onSendMessage: () => void;
   onToggleVoiceRecognition: () => void;
+  pendingUserMessage: string;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
@@ -49,6 +50,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onKeyPress,
   onSendMessage,
   onToggleVoiceRecognition,
+  pendingUserMessage,
 }) => {
   return (
     <div
@@ -70,6 +72,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         isLoading={isLoading}
         error={error}
         welcomeMessage={welcomeMessage}
+        pendingUserMessage={pendingUserMessage}
       />
       <ChatFooter
         inputValue={inputValue}
