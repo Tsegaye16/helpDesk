@@ -91,25 +91,16 @@ class ChatHistoryManager:
 
     def save_session_state(self, session_id: str, state: Dict) -> None:
         try:
-            state_id = f"state_{session_id}"
-            state_json = json.dumps({
-                "dissatisfaction_count": state.get("dissatisfaction_count", 0),
-                "awaiting_email": state.get("awaiting_email", False),
-                "awaiting_concern": state.get("awaiting_concern", False),
-                "user_email": state.get("user_email", None)
-            })
+            state_json = json.dumps({k: v for k, v in state.items() if k != "messages"})  # Exclude messages
             self.collection.upsert(
                 documents=[state_json],
-                metadatas=[{
-                    "session_id": session_id,
-                    "type": "state"
-                }],
-                ids=[state_id]
+                metadatas=[{"session_id": session_id, "type": "state"}],
+                ids=[f"{session_id}_state"]
             )
             logger.info(f"Saved session state for session {session_id}")
+            logger.debug(f"Saved state content: {state_json}")
         except Exception as e:
             logger.error(f"Error saving session state: {e}")
-            raise
 
     def get_session_state(self, session_id: str) -> Dict:
         try:
@@ -129,6 +120,7 @@ class ChatHistoryManager:
                 state["session_id"] = session_id
                 state["messages"] = self.get_chat_history(session_id)
                 logger.info(f"Retrieved session state for session {session_id}")
+                logger.debug(f"Retrieved state content: {state}")
                 return state
             # Return default state if none exists
             default_state = {
@@ -137,22 +129,29 @@ class ChatHistoryManager:
                 "dissatisfaction_count": 0,
                 "awaiting_email": False,
                 "awaiting_concern": False,
-                "user_email": None
+                "awaiting_email_confirmation": False,
+                "user_email": None,
+                "user_concern": None
             }
             logger.info(f"No session state found for session {session_id}. Returning default state.")
+            logger.debug(f"Default state content: {default_state}")
             return default_state
         except Exception as e:
             logger.error(f"Error retrieving session state: {e}")
             # Return default state on error
-            return {
+            default_state = {
                 "session_id": session_id,
                 "messages": self.get_chat_history(session_id),
                 "dissatisfaction_count": 0,
                 "awaiting_email": False,
                 "awaiting_concern": False,
-                "user_email": None
+                "awaiting_email_confirmation": False,
+                "user_email": None,
+                "user_concern": None
             }
-
+            logger.debug(f"Default state on error: {default_state}")
+            return default_state
+   
     def reset_collection(self):
         try:
             self.client.delete_collection("chat_history")

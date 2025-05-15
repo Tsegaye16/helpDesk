@@ -73,7 +73,7 @@ const ChatBody: React.FC<ChatBodyProps> = ({
           )}
         </div>
       ))}
-      {isLoading && (messages.length > 0 || pendingUserMessage) && (
+      {isLoading && messages.length > 0 && (
         <div className="message bot-message">
           <span className="bot-icon">🤖</span>
           <div className="bot-bubble">Thinking...</div>

@@ -27,9 +27,9 @@ def send_support_email(user_email: str, user_concern: str, recipient_email: str 
         # Create email body
         body = f"User Email: {user_email}\n\nConcern:\n{user_concern}\n\nRecent Conversation (Last 3 Exchanges):\n"
         
-        if chat_history:
+        if chat_history and len(chat_history) >= 6:
             # Take the last 6 messages (3 user + 3 assistant) if available
-            recent_messages = chat_history[-10:-4]  # Last 6 to cover 3 user-assistant pairs
+            recent_messages = chat_history[-12:-6]  # Last 6 to cover 3 user-assistant pairs
             for msg in recent_messages:
                 role = "User" if msg["role"] == "user" else "Assistant"
                 body += f"{role}: {msg['content']}\n"

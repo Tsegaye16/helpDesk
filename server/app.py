@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import logging
+import json
 from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from typing import Dict, List
+import re
 from config import GOOGLE_API_KEY, DATA_FOLDER, GEMINI_MODEL_NAME,EMAIL_RECIPIENT
 from document_processor import process_documents, create_text_chunks, create_vectorstore
 from llm_utils import create_conversational_chain, extract_company_name
@@ -131,15 +133,71 @@ async def init_session():
         logger.error(f"Error initializing session: {e}")
         raise HTTPException(status_code=500, detail="Failed to initialize session")
 
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     try:
         session_id = request.session_id or chat_manager.generate_session_id()
         state = get_session_state(session_id)
-        
+        logger.debug(f"Initial state for session {session_id}: {state}")
+
         # Save user message
         chat_manager.save_chat_message(session_id, "user", request.message)
         state["messages"].append({"role": "user", "content": request.message})
+
+        # Handle email confirmation first to ensure it’s not skipped
+        if state.get("awaiting_email_confirmation", False):
+            user_response = request.message.lower().strip()
+            logger.info(f"Confirmation response received: '{user_response}' for session {session_id}")
+            if user_response in ["yes", "confirm", "ok", "send"]:
+                # Send the email
+                recipient = support_email if support_email else EMAIL_RECIPIENT
+                result = send_support_email(
+                    state["user_email"],
+                    state["user_concern"],
+                    recipient_email=recipient,
+                    chat_history=state["messages"]
+                )
+                state["awaiting_email_confirmation"] = False
+                state["dissatisfaction_count"] = 0
+                response = result["message"]
+                if result["status"] == "error":
+                    response = f"Failed to send email: {result['message']}. Please try again or contact support directly."
+                logger.info(f"Support email sent for session {session_id}: {response}")
+            elif user_response in ["no", "cancel", "stop"]:
+                # Cancel the email
+                state["awaiting_email_confirmation"] = False
+                state["dissatisfaction_count"] = 0
+                response = "Email sending canceled. How else can I assist you?"
+                logger.info(f"Email sending canceled for session {session_id}")
+            else:
+                # Treat as a revised concern and recompose preview
+                state["user_concern"] = request.message
+                recipient = support_email if support_email else EMAIL_RECIPIENT
+                email_body = f"User Email: {state['user_email']}\n\nConcern:\n{state['user_concern']}\n\nRecent Conversation (Last 3 Exchanges):\n"
+                recent_messages = state["messages"][-6:]
+                if recent_messages:
+                    for msg in recent_messages:
+                        role = "User" if msg["role"] == "user" else "Assistant"
+                        email_body += f"{role}: {msg['content']}\n"
+                else:
+                    email_body += "No recent conversation available.\n"
+
+                response = (
+                    "Here’s the updated email preview with your revised concern:\n\n"
+                    f"---\n"
+                    f"Subject: Support Request from {state['user_email']}\n"
+                    f"To: {recipient}\n\n"
+                    f"{email_body}"
+                    f"---\n\n"
+                    "Please confirm by replying 'yes', 'confirm', 'ok', or 'send' to send the email. "
+                    "Reply 'no', 'cancel', or 'stop' to cancel, or provide another concern to revise again."
+                )
+                logger.info(f"Email preview updated with revised concern for session {session_id}")
+            chat_manager.save_chat_message(session_id, "assistant", response)
+            chat_manager.save_session_state(session_id, state)
+            logger.debug(f"State after confirmation handling for session {session_id}: {state}")
+            return ChatResponse(result=response, session_id=session_id)
 
         # Update dissatisfaction count or trigger support request
         is_negative, is_support_request = detect_negative_tone(request.message)
@@ -151,7 +209,7 @@ async def chat(request: ChatRequest):
             logger.info(f"Non-negative tone detected. Resetting dissatisfaction count to 0 for session {session_id}")
 
         # Handle escalation: either 3 negative responses or explicit support request
-        if (state["dissatisfaction_count"] >= 3 or is_support_request) and not state["awaiting_email"]:
+        if (state["dissatisfaction_count"] >= 3 or is_support_request) and not state.get("awaiting_email", False):
             state["awaiting_email"] = True
             response = (
                 "It seems like you’d like to connect with our support team. "
@@ -160,41 +218,56 @@ async def chat(request: ChatRequest):
             logger.info(f"Escalation triggered: {'Support request' if is_support_request else '3 negative responses'} for session {session_id}")
             chat_manager.save_chat_message(session_id, "assistant", response)
             chat_manager.save_session_state(session_id, state)
+            logger.debug(f"State after escalation for session {session_id}: {state}")
             return ChatResponse(result=response, session_id=session_id)
 
         # Handle email input
-        if state["awaiting_email"]:
-            if "@" in request.message and "." in request.message:
+        if state.get("awaiting_email", False):
+            if re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', request.message):
                 state["user_email"] = request.message
                 state["awaiting_email"] = False
                 state["awaiting_concern"] = True
                 response = "Thank you! Please provide your specific question or concern, and I'll forward it to our support team."
                 logger.info(f"Email received: {state['user_email']} for session {session_id}")
             else:
-                response = "Please provide a valid email address."
-                logger.info(f"Invalid email provided for session {session_id}")
+                response = "Please provide a valid email address (e.g., user@example.com)."
+                logger.info(f"Invalid email provided for session {session_id}: {request.message}")
             chat_manager.save_chat_message(session_id, "assistant", response)
             chat_manager.save_session_state(session_id, state)
+            logger.debug(f"State after email input for session {session_id}: {state}")
             return ChatResponse(result=response, session_id=session_id)
 
-        # Handle concern input and send email
-        if state["awaiting_concern"]:
-            user_concern = request.message
+        # Handle concern input and compose email preview
+        if state.get("awaiting_concern", False):
+            state["user_concern"] = request.message
             state["awaiting_concern"] = False
-            state["dissatisfaction_count"] = 0
+            state["awaiting_email_confirmation"] = True
 
-            # Use extracted support email if available, else fall back to EMAIL_RECIPIENT
+            # Compose email preview
             recipient = support_email if support_email else EMAIL_RECIPIENT
-            result = send_support_email(
-                state["user_email"],
-                user_concern,
-                recipient_email=recipient,
-                chat_history=state["messages"]
+            email_body = f"User Email: {state['user_email']}\n\nConcern:\n{state['user_concern']}\n\nRecent Conversation (Last 3 Exchanges):\n"
+            recent_messages = state["messages"][-6:]  # Last 6 to cover 3 user-assistant pairs
+            if recent_messages:
+                for msg in recent_messages:
+                    role = "User" if msg["role"] == "user" else "Assistant"
+                    email_body += f"{role}: {msg['content']}\n"
+            else:
+                email_body += "No recent conversation available.\n"
+
+            response = (
+                "Here’s a preview of the email that will be sent to our support team:\n\n"
+                f"---\n"
+                f"Subject: Support Request from {state['user_email']}\n"
+                f"To: {recipient}\n\n"
+                f"{email_body}"
+                f"---\n\n"
+                "Please confirm by replying 'yes', 'confirm', 'ok', or 'send' to send the email. "
+                "Reply 'no', 'cancel', or 'stop' to cancel, or provide another concern to revise."
             )
-            response = result["message"]
-            logger.info(f"Support email sent for session {session_id}: {response}")
+            logger.info(f"Email preview presented for session {session_id}")
             chat_manager.save_chat_message(session_id, "assistant", response)
             chat_manager.save_session_state(session_id, state)
+            logger.debug(f"State after preview for session {session_id}: {state}")
             return ChatResponse(result=response, session_id=session_id)
 
         # Normal response handling
@@ -207,18 +280,20 @@ async def chat(request: ChatRequest):
             chat_manager.save_chat_message(session_id, "assistant", response)
             chat_manager.save_session_state(session_id, state)
             logger.info(f"Normal response generated for session {session_id}")
+            logger.debug(f"State after normal response for session {session_id}: {state}")
             return ChatResponse(result=response, session_id=session_id)
         except Exception as e:
             error_response = "Let me try that again - sometimes connections can be tricky!"
             logger.error(f"Error processing user input: {e}")
             chat_manager.save_chat_message(session_id, "assistant", error_response)
             chat_manager.save_session_state(session_id, state)
+            logger.debug(f"State after error response for session {session_id}: {state}")
             return ChatResponse(result=error_response, session_id=session_id)
 
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
         chat_manager.save_session_state(session_id, state)
-  # Save state even on error
+        logger.debug(f"State after error for session {session_id}: {state}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/getChatHistory/{session_id}")
