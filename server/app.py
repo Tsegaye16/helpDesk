@@ -63,42 +63,50 @@ def get_session_state(session_id: str) -> Dict:
         session_id = chat_manager.generate_session_id()
     return chat_manager.get_session_state(session_id)
 
-def detect_negative_tone(message: str) -> bool:
+def detect_negative_tone(message: str) -> tuple[bool, bool]:
     try:
         model = genai.GenerativeModel(
             model_name=GEMINI_MODEL_NAME,
             system_instruction=(
-                "You are an expert in sentiment analysis. Analyze the sentiment of the provided message and determine if it has a negative tone. "
-                "A negative tone includes expressions of frustration, dissatisfaction, anger, confusion, disappointment, or negation. "
-                "Return 'True' if the tone is negative, or 'False' if it is neutral or positive. Ensure the response is exactly 'True' or 'False'."
+                "You are an expert in sentiment analysis and intent detection. Analyze the provided message for two aspects:\n"
+                "1. **Negative Tone**: Determine if the message has a negative tone, including expressions of frustration, dissatisfaction, anger, confusion, disappointment, or negation.\n"
+                "2. **Support Request**: Determine if the message explicitly requests contact with the support team, such as phrases like 'contact support', 'email support', 'talk to support', 'send to support', or similar.\n"
+                "Return a JSON object with two fields: 'is_negative' (true/false) and 'is_support_request' (true/false). Ensure the response is valid JSON."
             )
         )
         prompt = (
-            f"Analyze the sentiment of the following message and return exactly 'True' if the tone is negative, or 'False' if it is neutral or positive:\n\n"
+            f"Analyze the following message:\n\n"
             f"Message: {message}\n\n"
-            "Sentiment (True/False):"
+            "Return: ```json\n"
+            "{\"is_negative\": <true/false>, \"is_support_request\": <true/false>}\n"
+            "```"
         )
         response = model.generate_content(prompt)
-        sentiment = response.text.strip().lower()
-        if sentiment not in ["true", "false"]:
-            logger.warning(f"Invalid sentiment response from LLM: {sentiment}. Falling back to keyword analysis.")
-            negative_keywords = [
-                "not helpful", "wrong", "bad", "terrible", "awful", "frustrated", 
-                "disappointed", "angry", "confused", "hate", "don't like", "no", 
-                "can't", "stupid", "fail", "useless", "didn't", "doesn’t", "never"
-            ]
-            return any(keyword in message.lower() for keyword in negative_keywords)
-        logger.info(f"Sentiment analysis for message '{message}': {sentiment}")
-        return sentiment == "true"
+        result = json.loads(response.text.strip().lstrip("```json").rstrip("```"))
+        
+        if not isinstance(result, dict) or "is_negative" not in result or "is_support_request" not in result:
+            logger.warning(f"Invalid response from LLM: {response.text}. Falling back to keyword analysis.")
+            return fallback_analysis(message)
+        
+        logger.info(f"Sentiment analysis for message '{message}': {result}")
+        return result["is_negative"], result["is_support_request"]
     except Exception as e:
-        logger.error(f"Error detecting negative tone with LLM: {e}")
-        negative_keywords = [
-            "not helpful", "wrong", "bad", "terrible", "awful", "frustrated", 
-            "disappointed", "angry", "confused", "hate", "don't like", "no", 
-            "can't", "stupid", "fail", "useless", "didn't", "doesn’t", "never"
-        ]
-        return any(keyword in message.lower() for keyword in negative_keywords)
+        logger.error(f"Error detecting tone or support request with LLM: {e}")
+        return fallback_analysis(message)
 
+def fallback_analysis(message: str) -> tuple[bool, bool]:
+    negative_keywords = [
+        "not helpful", "wrong", "bad", "terrible", "awful", "frustrated", 
+        "disappointed", "angry", "confused", "hate", "don't like", "no", 
+        "can't", "stupid", "fail", "useless", "didn't", "doesn’t", "never"
+    ]
+    support_keywords = [
+        "contact support", "email support", "talk to support", "send to support", 
+        "support team", "customer service", "help desk", "escalate", "human agent"
+    ]
+    is_negative = any(keyword in message.lower() for keyword in negative_keywords)
+    is_support_request = any(keyword in message.lower() for keyword in support_keywords)
+    return is_negative, is_support_request
 
 @app.get("/getCompanyName")
 async def get_company_name():
@@ -133,22 +141,23 @@ async def chat(request: ChatRequest):
         chat_manager.save_chat_message(session_id, "user", request.message)
         state["messages"].append({"role": "user", "content": request.message})
 
-        # Update dissatisfaction count
-        if detect_negative_tone(request.message):
+        # Update dissatisfaction count or trigger support request
+        is_negative, is_support_request = detect_negative_tone(request.message)
+        if is_negative:
             state["dissatisfaction_count"] += 1
             logger.info(f"Negative tone detected. Dissatisfaction count: {state['dissatisfaction_count']} for session {session_id}")
         else:
             state["dissatisfaction_count"] = 0
             logger.info(f"Non-negative tone detected. Resetting dissatisfaction count to 0 for session {session_id}")
 
-        # Handle escalation after 3 negative responses
-        if state["dissatisfaction_count"] >= 3 and not state["awaiting_email"]:
+        # Handle escalation: either 3 negative responses or explicit support request
+        if (state["dissatisfaction_count"] >= 3 or is_support_request) and not state["awaiting_email"]:
             state["awaiting_email"] = True
             response = (
-                "It seems like I may not be fully addressing your concern. To better assist you, "
-                "please provide your email address, and I'll connect you with our support team."
+                "It seems like you’d like to connect with our support team. "
+                "Please provide your email address, and I'll forward your request."
             )
-            logger.info(f"Escalation triggered: Requesting email for session {session_id}")
+            logger.info(f"Escalation triggered: {'Support request' if is_support_request else '3 negative responses'} for session {session_id}")
             chat_manager.save_chat_message(session_id, "assistant", response)
             chat_manager.save_session_state(session_id, state)
             return ChatResponse(result=response, session_id=session_id)
@@ -180,7 +189,7 @@ async def chat(request: ChatRequest):
                 state["user_email"],
                 user_concern,
                 recipient_email=recipient,
-                chat_history=state["messages"]  # Pass chat history
+                chat_history=state["messages"]
             )
             response = result["message"]
             logger.info(f"Support email sent for session {session_id}: {response}")
@@ -209,6 +218,7 @@ async def chat(request: ChatRequest):
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
         chat_manager.save_session_state(session_id, state)
+  # Save state even on error
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/getChatHistory/{session_id}")
